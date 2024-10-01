@@ -3,6 +3,7 @@
 Overview
 
 This project is a C++ implementation of the classic Monopoly game with a graphical interface (GUI) using the SFML library. The game supports 2 to 8 players and follows the standard rules of Monopoly, including property management, rent payment, and other game mechanics. Players can move around the board, buy properties, build houses and hotels, and collect rent. The winner is the last player standing or the first to reach 4000 in cash.
+
 Features
 
     Dynamic Board: The board consists of 40 spaces, including properties, railroads, utilities, and special spaces (e.g., Go, Jail, Free Parking).
