@@ -7,10 +7,13 @@
 #include "Square.hpp"
 
 class CommunityChestSquare : public Square {
+    private:
+    sf::Color color;
 public:
     CommunityChestSquare();
 
-    void action(Player* player, Board* board, sf::RenderWindow& window) override;
+    sf::Color getColor() const override ;
+    void action(Player* player, Board* board) override; // Updated to remove window parameter
     void render(sf::RenderWindow& window, sf::Vector2f position, float size, const sf::Font& font) override;
 
     ~CommunityChestSquare();
