@@ -4,45 +4,67 @@
 #include "GameController.hpp"
 #include <SFML/Graphics.hpp>
 #include <iostream>
-int getNumberOfPlayers(sf::RenderWindow& window) {
-    sf::Font font;
-    if (!font.loadFromFile("Roboto-Bold.ttf")) {
-        std::cerr << "Error loading font!" << std::endl;
-        return 2;
+#include <csignal>
+#include <string>
+
+// מטפל אותות
+void signalHandler(int signum) {
+    std::cout << "\nInterrupt signal (" << signum << ") received. Cleaning up..." << std::endl;
+    exit(signum);
+}
+
+// פונקציה לקבלת מספר שחקנים מהמשתמש דרך הטרמינל
+int getNumberOfPlayers() {
+    int numPlayers = 0;
+    while (numPlayers < 1 || numPlayers > 8) {
+        std::cout << "Enter number of players (1-8): ";
+        std::cin >> numPlayers;
     }
+    return numPlayers;
+}
 
-    sf::Text questionText("Enter number of players (2-8):", font, 20);
-    questionText.setPosition(200, 200);
-
-    sf::Text inputText("", font, 20);
-    inputText.setPosition(200, 250);
-
-    while (window.isOpen()) {
-        sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::TextEntered) {
-                if (event.text.unicode >= '2' && event.text.unicode <= '8') {
-                    return event.text.unicode - '0';
-                }
-            }
-        }
-
-        window.clear(sf::Color::White);
-        window.draw(questionText);
-        window.draw(inputText);
-        window.display();
+// פונקציה לקבלת מספר שחקני מחשב דרך הטרמינל
+int getNumberOfAIPlayers(int maxPlayers) {
+    int numAIPlayers = 0;
+    while (numAIPlayers < 0 || numAIPlayers > maxPlayers) {
+        std::cout << "Enter number of AI players (0-" << maxPlayers << "): ";
+        std::cin >> numAIPlayers;
     }
-
-    return 2;
+    return numAIPlayers;
 }
 
 int main() {
-    sf::RenderWindow window(sf::VideoMode(800, 600), "Monopoly");
-    GameController game;
+    // רישום מטפל אותות
+    signal(SIGINT, signalHandler);  // טיפול ב־Ctrl+C
 
-    int numPlayers = getNumberOfPlayers(window);
-    game.initializeGame(numPlayers);
-    game.startGame(window);
+    sf::RenderWindow window(sf::VideoMode(800, 600), "Monopoly");
+    GameController* game = nullptr;
+
+    try {
+        game = new GameController();  // יצירת משחק חדש
+
+        // קבלת מספר שחקנים אנושיים
+        int numPlayers = getNumberOfPlayers(); 
+
+        // קבלת מספר שחקני מחשב
+        int numAIPlayers = getNumberOfAIPlayers(8 - numPlayers); 
+
+        // אתחול המשחק עם מספר השחקנים הרגילים והממוחשבים
+        game->initializeGame(numPlayers, numAIPlayers, window);  
+
+        // לולאת משחק
+        game->startGame(window);
+    } catch (const std::exception& e) {
+        std::cerr << "Exception caught: " << e.what() << std::endl;
+    } catch (...) {
+        std::cerr << "Unknown error occurred." << std::endl;
+    }
+
+    // ניקוי זיכרון במקרה של סגירה
+    if (game != nullptr) {
+        delete game;
+        game = nullptr;
+    }
 
     return 0;
 }
