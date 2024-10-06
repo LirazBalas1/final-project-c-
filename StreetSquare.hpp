@@ -10,15 +10,16 @@
 
 class StreetSquare : public Square {
 private:
-    int cost;
-    int baseRent;
-    Player* owner;
-    int houses;
-    int hotels;
-    sf::Color color;
+    int cost;               // עלות הנכס
+    int baseRent;           // שכר דירה בסיסי ללא בתים או בתי מלון
+    Player* owner;          // בעל הנכס
+    int houses;             // מספר הבתים שנבנו בנכס
+    int hotels;             // מספר בתי המלון בנכס
+    sf::Color color;        // צבע הנכס
 
 public:
     StreetSquare(const std::string& name, int cost, int baseRent, const sf::Color& color);
+     sf::Color getColor() const override ; // מימוש של הפונקציה
 
     int getCost() const;
     int calculateRent() const;
@@ -26,15 +27,14 @@ public:
     void buildHotel();
     bool canBuildHouse() const;
     bool canBuildHotel() const;
-    void buyProperty(Player* player, sf::RenderWindow& window);
-    void setOwner(Player* newOwner) override ;
+    void buyProperty(Player* player);
+    void setOwner(Player* newOwner) override;
     Player* getOwner() const override;
-    sf::Color getColor() const;
 
-    void action(Player* player, Board* board, sf::RenderWindow& window) override;
+    void action(Player* player, Board* board) override;
     void render(sf::RenderWindow& window, sf::Vector2f position, float size, const sf::Font& font) override;
 
-    ~StreetSquare();
+    ~StreetSquare() override;  // שימוש במילה override ל-Destructor
 };
 
 #endif // STREET_SQUARE_H
