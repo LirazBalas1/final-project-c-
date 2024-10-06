@@ -7,12 +7,13 @@
 #include <string>
 #include <vector>
 #include <SFML/Graphics.hpp>
+#include <memory>  // לשימוש ב-Smart Pointers
 
 class Square;
 class Board;
-class RailroadSquare;  
-class UtilitySquare;  
 class PropertySquare;
+class RailroadSquare;
+class UtilitySquare;
 
 class Player {
 private:
@@ -21,50 +22,49 @@ private:
     int position;
     bool inJail;
     int jailTurns;
-    std::vector<Square*> properties;
+    std::vector<std::unique_ptr<Square>> properties;  // שינוי לשימוש ב-Smart Pointers
     sf::Color color;
     sf::CircleShape token;
-    
-public:
-    Player(const std::string& playerName, int initialBalance, sf::Color playerColor);
+    int amount;
+    int interestRate;
+    bool isAI;  // שדה חדש לזיהוי האם השחקן הוא AI, מעבירים אותו אחרי הצבע (color)
 
-    // Getters
+public:
+    Player(const std::string& playerName, int initialBalance, sf::Color playerColor, bool isAI);
+    void takeAITurn(Board& board);
     std::string getName() const;
     int getBalance() const;
     int getPosition() const;
     bool isInJail() const;
+    bool isAIPlayer() const;  // פונקציה חדשה לזיהוי שחקן AI 
+    bool tryToEscapeJail();  // פונקציה שמנסה להוציא את השחקן מהכלא
     sf::Color getColor() const;
     int getNumberOfRailroads() const;
     int getNumberOfUtilities() const;
-
-    Square* selectPropertyToMortgage(sf::RenderWindow& window);
-    void mortgage(Square* property, sf::RenderWindow& window);
-    void declareBankruptcy(Player* creditor, sf::RenderWindow& window);
-    void addProperty(Square* property) { properties.push_back(property); }
-    int getTotalMortgageValue() const;
-
-    // Setters
+    void forfeit();
     void setBalance(int newBalance);
     void setPosition(int newPosition);
-
-    // Actions
-    void move(int steps, Board& board, sf::RenderWindow& window);
-    void buyProperty(Square* property, sf::RenderWindow& window);
-    void payRent(int amount, Player* owner, sf::RenderWindow& window);
-    void addMoney(int amount, sf::RenderWindow& window);
-    void sendToJail(sf::RenderWindow& window);
+    void move(int roll, Board& board);
+    int getJailTurns() const;
+    void incrementJailTurn();
+    void buyProperty(Square* property);
+    void payRent(int amount, Player* owner);
+    void addMoney(int amount);
+    void sendToJail();
     void getOutOfJail();
     int rollDice();
     bool isBankrupt() const;
-    void displayMessage(sf::RenderWindow& window, const std::string& message);
+    int getTotalMortgageValue() const;
+    void removeProperty(Square* property);
+    void offerLoan(Player* otherPlayer, int amount, int interestRate);
+    void repayLoan(int amount, Player* lender);
 
-    // Rendering
-    void render(sf::RenderWindow& window, const sf::Font& font) const;
-
-    // Function to get only PropertySquare type properties
+    void addProperty(std::unique_ptr<Square> property);  // שינוי לשימוש ב-Smart Pointers
     std::vector<PropertySquare*> getPropertySquares() const;
+    void displayMessage(const std::string& message);
 
-    ~Player();
+    void render(sf::RenderWindow& window, const sf::Font& font) const;
+    ~Player();  // משחרר זיכרון
 };
 
 #endif // PLAYER_HPP
