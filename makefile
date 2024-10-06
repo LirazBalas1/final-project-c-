@@ -1,6 +1,6 @@
 # Variables
 CXX = g++
-CXXFLAGS = -std=c++11 -Wall -g
+CXXFLAGS = -std=c++14 -Wall -g  # הוספת דגל debug 
 LDFLAGS = -lsfml-graphics -lsfml-window -lsfml-system
 EXEC = monopoly
 TEST_EXEC = test_monopoly
@@ -40,3 +40,8 @@ run: $(EXEC)
 # Run the tests
 test_run: $(TEST_EXEC)
 	./$(TEST_EXEC)
+
+# Debug the game using gdb
+debug: $(EXEC)
+	gdb --args ./$(EXEC)
+
