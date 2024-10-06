@@ -3,7 +3,6 @@
 //lbalad13@gmail.com
 #include "StreetSquare.hpp"
 #include "Player.hpp"
-#include "Board.hpp"
 #include <iostream>
 
 StreetSquare::StreetSquare(const std::string& name, int cost, int baseRent, const sf::Color& color)
@@ -14,58 +13,67 @@ int StreetSquare::getCost() const {
 }
 
 int StreetSquare::calculateRent() const {
-    if (owner == nullptr) return 0;
-    if (hotels > 0) return baseRent * 5;
-    return baseRent * (1 << houses);  // Doubles for each house
+    if (hotels > 0) {
+        return baseRent * 5;  // שכר דירה עם בית מלון
+    }
+    return baseRent * (1 << houses);  // שכר דירה עולה פי 2 עבור כל בית שנבנה
 }
 
 void StreetSquare::buildHouse() {
-    if (canBuildHouse()) houses++;
+    if (canBuildHouse()) {
+        houses++;
+    }
 }
 
 void StreetSquare::buildHotel() {
     if (canBuildHotel()) {
         hotels++;
-        houses = 0;
+        houses = 0;  // בית מלון מחליף את כל הבתים
     }
 }
 
 bool StreetSquare::canBuildHouse() const {
-    return houses < 4 && hotels == 0;
+    return houses < 4 && hotels == 0;  // ניתן לבנות עד 4 בתים, אלא אם יש בית מלון
 }
 
 bool StreetSquare::canBuildHotel() const {
-    return houses == 4 && hotels == 0;
+    return houses == 4;  // ניתן לבנות בית מלון רק לאחר 4 בתים
 }
 
-void StreetSquare::buyProperty(Player* player, sf::RenderWindow& window) {
+void StreetSquare::buyProperty(Player* player) {
     if (owner == nullptr && player->getBalance() >= cost) {
-        player->setBalance(player->getBalance() - cost);
+        player->addMoney(-cost);  // ניכוי עלות מהשחקן
         setOwner(player);
-        // Additional logic for buying property
+        player->addProperty(std::make_unique<StreetSquare>(*this));  // יצירת עותק של הנכס והוספתו לרשימת השחקן
+        player->displayMessage(player->getName() + " bought " + getName() + " for $" + std::to_string(cost));
+    } else if (owner != nullptr) {
+        player->displayMessage(getName() + " is already owned by " + owner->getName());
+    } else {
+        player->displayMessage(player->getName() + " does not have enough money to buy " + getName());
     }
-}
-
-Player* StreetSquare::getOwner() const {
-    return owner;
 }
 
 void StreetSquare::setOwner(Player* newOwner) {
     owner = newOwner;
 }
 
-sf::Color StreetSquare::getColor() const {
-    return color;
+Player* StreetSquare::getOwner() const {
+    return owner;
 }
 
-void StreetSquare::action(Player* player, Board* board, sf::RenderWindow& window) {
+sf::Color StreetSquare::getColor() const {
+    return color;  // החזרת הצבע של הנכס
+}
+
+void StreetSquare::action(Player* player, Board* board) {
     if (owner == nullptr) {
-        // Offer to buy property
-        buyProperty(player, window);
+        // הצעת רכישת הנכס
+        buyProperty(player);
     } else if (owner != player) {
-        // Pay rent
+        // תשלום שכר דירה
         int rent = calculateRent();
-        player->payRent(rent, owner, window);
+        player->payRent(rent, owner);
+        player->displayMessage(player->getName() + " landed on " + getName() + " and owes $" + std::to_string(rent) + " in rent.");
     }
 }
 
@@ -77,7 +85,7 @@ void StreetSquare::render(sf::RenderWindow& window, sf::Vector2f position, float
     square.setOutlineThickness(1.0f);
     window.draw(square);
 
-    sf::Text nameText(name, font, 10);
+    sf::Text nameText(getName(), font, 10);
     nameText.setPosition(position.x + 5, position.y + 5);
     nameText.setFillColor(sf::Color::Black);
     window.draw(nameText);
@@ -95,4 +103,6 @@ void StreetSquare::render(sf::RenderWindow& window, sf::Vector2f position, float
     }
 }
 
-StreetSquare::~StreetSquare() {}
+StreetSquare::~StreetSquare() {
+    // Destructor לא דורש שחרור זיכרון נוסף כי אין הקצאות דינמיות
+}
