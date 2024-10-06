@@ -4,10 +4,9 @@
 #include "PropertySquare.hpp"
 #include "Player.hpp"
 #include <iostream>
-#include <SFML/Graphics.hpp>
 
-PropertySquare::PropertySquare(const std::string& propertyName, int propertyCost, int propertyRent)
-    : Square(propertyName), cost(propertyCost), baseRent(propertyRent), owner(nullptr), houses(0), hotels(0) {}
+PropertySquare::PropertySquare(const std::string& propertyName, int propertyCost, int propertyRent, const sf::Color& propertyColor)
+    : Square(propertyName), cost(propertyCost), baseRent(propertyRent), owner(nullptr), houses(0), hotels(0), mortgaged(false), mortgageValue(propertyCost / 2), color(propertyColor) {}
 
 int PropertySquare::getCost() const {
     return cost;
@@ -16,163 +15,105 @@ int PropertySquare::getCost() const {
 int PropertySquare::getBaseRent() const {
     return baseRent;
 }
-void PropertySquare::buyProperty(Player* player, sf::RenderWindow& window) {
+int PropertySquare::getMortgageValue() const {
+    return mortgageValue; // מחזיר את ערך המשכנתא
+}
+
+bool PropertySquare::isMortgaged() const {
+    return mortgaged; // בדיקה אם הנכס נמצא במשכנתא
+}
+
+void PropertySquare::setMortgaged(bool mortgaged) {
+    this->mortgaged = mortgaged; // הגדרת משכנתא
+}
+
+void PropertySquare::setOwner(Player* newOwner) {
+    owner = newOwner; // הגדרת בעלים חדש לנכס
+}
+
+Player* PropertySquare::getOwner() const {
+    return owner; // מחזיר את הבעלים הנוכחי
+}
+ sf::Color PropertySquare::getColor() const { return sf::Color(128, 128, 128); }
+
+void PropertySquare::buyProperty(Player* player) {
     if (owner == nullptr && player->getBalance() >= cost) {
-        player->setBalance(player->getBalance() - cost);
+        player->addMoney(-cost); // הורדת העלות מהשחקן
         setOwner(player);
-        player->buyProperty(this, window);  // Changed from buySquare to buyProperty
-
-
-        std::cout << player->getName() << " bought " << getName() << " for " << cost << std::endl;
-
-        // Display purchase on game window
-        sf::Font font;
-        if (!font.loadFromFile("Roboto-Black.ttf")) {
-            std::cerr << "Error loading font!" << std::endl;
-            return;
-        }
-        sf::Text message;
-        message.setFont(font);
-        message.setString(player->getName() + " bought " + getName() + " for $" + std::to_string(cost));
-        message.setCharacterSize(24);
-        message.setFillColor(sf::Color::Black);
-        message.setPosition(10, 10);
-
-        window.clear(sf::Color::White);
-        window.draw(message);
-        window.display();
-
-        sf::sleep(sf::seconds(2));
+        player->addProperty(std::make_unique<PropertySquare>(*this));  // יצירת עותק של הנכס והוספתו לרשימת השחקן
+        player->displayMessage(player->getName() + " bought " + getName() + " for $" + std::to_string(cost));
     } else if (owner != nullptr) {
-        std::cout << getName() << " is already owned by " << owner->getName() << std::endl;
-
-        sf::Font font;
-        if (!font.loadFromFile("Roboto-Black.ttf")) {
-            std::cerr << "Error loading font!" << std::endl;
-            return;
-        }
-        sf::Text message;
-        message.setFont(font);
-        message.setString(getName() + " is already owned by " + owner->getName());
-        message.setCharacterSize(24);
-        message.setFillColor(sf::Color::Red);
-        message.setPosition(10, 10);
-
-        window.clear(sf::Color::White);
-        window.draw(message);
-        window.display();
-
-        sf::sleep(sf::seconds(2));
+        player->displayMessage(getName() + " is already owned by " + owner->getName());
     } else {
-        std::cout << player->getName() << " doesn't have enough money to buy " << getName() << std::endl;
-
-        sf::Font font;
-        if (!font.loadFromFile("Roboto-Black.ttf")) {
-            std::cerr << "Error loading font!" << std::endl;
-            return;
-        }
-        sf::Text message;
-        message.setFont(font);
-        message.setString(player->getName() + " doesn't have enough money to buy " + getName());
-        message.setCharacterSize(24);
-        message.setFillColor(sf::Color::Red);
-        message.setPosition(10, 10);
-
-        window.clear(sf::Color::White);
-        window.draw(message);
-        window.display();
-
-        sf::sleep(sf::seconds(2));
+        player->displayMessage(player->getName() + " does not have enough money to buy " + getName());
     }
 }
 
 int PropertySquare::calculateRent() const {
     if (hotels > 0) {
-        return baseRent * 5;  // Rent with a hotel
+        return baseRent * 5;  // שכר דירה אם יש מלון
     }
-    return baseRent * (1 << houses);  // Rent increases by a factor of 2 per house
+    return baseRent * (1 << houses);  // שכר דירה מוכפל בהתאם למספר הבתים
 }
 
 void PropertySquare::buildHouse() {
     if (canBuildHouse()) {
-        houses++;
-        std::cout << "A house was built on " << getName() << std::endl;
+        houses++; // הוספת בית לנכס
+        std::cout << "Built a house on " << getName() << ". Now there are " << houses << " houses." << std::endl;
     }
 }
 
 void PropertySquare::buildHotel() {
     if (canBuildHotel()) {
-        hotels++;
-        houses = 0;  // A hotel replaces the houses
-        std::cout << "A hotel was built on " << getName() << std::endl;
+        hotels++; // הוספת מלון
+        houses = 0;  // מלון מחליף את כל הבתים
+        std::cout << "Built a hotel on " << getName() << "." << std::endl;
     }
 }
 
 bool PropertySquare::canBuildHouse() const {
-    return houses < 4 && hotels == 0;  // Up to 4 houses can be built
+    return houses < 4 && hotels == 0;  // ניתן לבנות עד 4 בתים אם אין מלון
 }
 
 bool PropertySquare::canBuildHotel() const {
-    return houses == 4;  // A hotel can only be built after 4 houses
+    return houses == 4;  // ניתן לבנות מלון רק אחרי 4 בתים
 }
 
-void PropertySquare::action(Player* player, Board* board, sf::RenderWindow& window) {
+void PropertySquare::action(Player* player, Board* board) {
     if (owner == nullptr) {
-        std::cout << player->getName() << " can buy " << getName() << " for " << cost << std::endl;
-        std::cout << "Would you like to buy it? (y/n): ";
-        char choice;
-        std::cin >> choice;
-
-        if (choice == 'y') {
-            buyProperty(player, window);
-        }
+        buyProperty(player); // הצעת רכישת הנכס
     } else if (owner != player) {
         int rent = calculateRent();
-        std::cout << player->getName() << " landed on " << getName() << " and owes " << rent << " in rent." << std::endl;
+        player->payRent(rent, owner); // תשלום שכר דירה
+        player->displayMessage(player->getName() + " landed on " + getName() + " and owes $" + std::to_string(rent) + " in rent.");
+    }
+}
+void PropertySquare::render(sf::RenderWindow& window, sf::Vector2f position, float size, const sf::Font& font) {
+    sf::RectangleShape square(sf::Vector2f(size, size));
+    square.setPosition(position);
+    square.setFillColor(color);
+    square.setOutlineColor(sf::Color::Black);
+    square.setOutlineThickness(1.0f);
+    window.draw(square);
 
-        sf::Font font;
-        if (!font.loadFromFile("Roboto-Black.ttf")) {
-            std::cerr << "Error loading font for rent display!" << std::endl;
-            return;
-        }
+    sf::Text nameText(getName(), font, 10);
+    nameText.setPosition(position.x + 5, position.y + 5);
+    nameText.setFillColor(sf::Color::Black);
+    window.draw(nameText);
 
-        sf::Text message;
-        message.setFont(font);
-        message.setString(player->getName() + " owes " + std::to_string(rent) + " in rent to " + owner->getName());
-        message.setCharacterSize(24);
-        message.setFillColor(sf::Color::Black);
-        message.setPosition(10, 10);
+    sf::Text costText("$" + std::to_string(cost), font, 10);
+    costText.setPosition(position.x + 5, position.y + size - 20);
+    costText.setFillColor(sf::Color::Black);
+    window.draw(costText);
 
-        window.clear(sf::Color::White);
-        window.draw(message);
-        window.display();
-
-        sf::sleep(sf::seconds(2));
-
-        player->payRent(rent, owner, window);
-    } else {
-        std::cout << player->getName() << " owns " << getName() << std::endl;
-
-        sf::Font font;
-        if (!font.loadFromFile("Roboto-Black.ttf")) {
-            std::cerr << "Error loading font for ownership display!" << std::endl;
-            return;
-        }
-
-        sf::Text message;
-        message.setFont(font);
-        message.setString(player->getName() + " owns " + getName());
-        message.setCharacterSize(24);
-        message.setFillColor(sf::Color::Black);
-        message.setPosition(10, 10);
-
-        window.clear(sf::Color::White);
-        window.draw(message);
-        window.display();
-
-        sf::sleep(sf::seconds(2));
+    if (owner) {
+        sf::CircleShape ownerToken(5);
+        ownerToken.setFillColor(owner->getColor());
+        ownerToken.setPosition(position.x + size - 15, position.y + 5);
+        window.draw(ownerToken);
     }
 }
 
 PropertySquare::~PropertySquare() {
+    // ניקוי זיכרון אם נדרש
 }
