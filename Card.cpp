@@ -8,29 +8,38 @@
 
 Card::Card(const std::string& desc, int amt) : description(desc), amount(amt) {}
 
-std::string Card::getDescription() const { return description; }
-int Card::getAmount() const { return amount; }
+std::string Card::getDescription() const {
+    return description;
+}
 
-void Card::applyToPlayer(Player* player, Board* board, sf::RenderWindow& window) {
+int Card::getAmount() const {
+    return amount;
+}
+
+void Card::applyToPlayer(Player* player, Board* board) {
     std::cout << player->getName() << " drew a card: " << description << std::endl;
 
     if (amount != 0) {
-        player->addMoney(amount, window);
-    } else if (description == "Advance to Go") {
+        std::cout << "Applying money effect: " << amount << std::endl;
+        player->addMoney(amount);
+    } else if (description == "Advance to Go (Collect $200)") {
+        std::cout << "Applying Go effect" << std::endl;
         player->setPosition(0);
-        player->addMoney(200, window);
+        player->addMoney(200);
     } else if (description == "Go to Jail") {
-        player->sendToJail(window);
+        std::cout << "Sending player to jail" << std::endl;
+        player->sendToJail();
+    } else if (description == "Bank error in your favor—Collect $200") {
+        std::cout << "Bank error: Player gets $200" << std::endl;
+        player->addMoney(200);
     }
-    // Add more specific card actions here
 }
 
+
 void Card::render(sf::RenderWindow& window, const sf::Font& font) const {
-    sf::Text cardText;
-    cardText.setFont(font);
-    cardText.setCharacterSize(12);
+    // פונקציה לציור הקלף על המסך, במידת הצורך
+    sf::Text cardText(description, font, 14);
+    cardText.setPosition(10, 10);  // דוגמה למיקום הקלף
     cardText.setFillColor(sf::Color::Black);
-    cardText.setString(description);
-    cardText.setPosition(400, 300);  // Adjust position as needed
     window.draw(cardText);
 }
