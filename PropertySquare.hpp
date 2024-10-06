@@ -1,8 +1,8 @@
 //Liraz Balas
 //211801220
 //lbalad13@gmail.com
-#ifndef PROPERTYSQUARE_H
-#define PROPERTYSQUARE_H
+#ifndef PROPERTYSQUARE_HPP
+#define PROPERTYSQUARE_HPP
 
 #include "Square.hpp"
 #include "Player.hpp"
@@ -10,42 +10,44 @@
 
 class PropertySquare : public Square {
 private:
-    int cost;               // Cost of the property
-    int baseRent;           // Base rent without houses or hotels
-    Player* owner;          // Owner of the property
-    int houses;             // Number of houses on the property
-    int hotels;             // Number of hotels on the property
-    bool mortgaged;
-    int mortgageValue;
+    int cost;               // עלות הנכס
+    int baseRent;           // שכר דירה בסיסי ללא בתים או בתי מלון
+    Player* owner;          // הבעלים של הנכס
+    int houses;             // מספר הבתים שנבנו בנכס
+    int hotels;             // מספר בתי המלון בנכס
+    bool mortgaged;         // האם הנכס נמצא במשכנתא
+    int mortgageValue;      // ערך המשכנתא
+    sf::Color color;        // צבע הנכס (לקבוצות צבעוניות במשחק)
 
 public:
-    PropertySquare(const std::string& propertyName, int propertyCost, int propertyRent);
+    PropertySquare(const std::string& propertyName, int propertyCost, int propertyRent, const sf::Color& propertyColor);
 
+    sf::Color getColor() const override ;// אפור }  // מימוש של הפונקציה
     // Getters
     int getCost() const;
     int getBaseRent() const;
 
-    int getMortgageValue() const override { return mortgageValue; };
-    bool isMortgaged() const override { return mortgaged; };
-    void setMortgaged(bool mortgaged) override { this->mortgaged = mortgaged; };
-    void setOwner(Player* newOwner) override { owner = newOwner; }
-    Player* getOwner() const override { return owner; }
-    // Setters
+    int getMortgageValue() const; 
+    bool isMortgaged() const; 
+    void setMortgaged(bool mortgaged); 
+    void setOwner(Player* newOwner); 
+    Player* getOwner() const; 
 
-    // Property actions
-    void buyProperty(Player* player, sf::RenderWindow& window);     // Buy property
-    int calculateRent() const;            // Calculate the rent
-    void buildHouse();                    // Build a house (for streets)
-    void buildHotel();                    // Build a hotel (for streets)
+    // פעולות עם הנכס
+    void buyProperty(Player* player);    
+    int calculateRent() const;           
+    void buildHouse();                    
+    void buildHotel();                    
 
-    bool canBuildHouse() const;           // Check if a house can be built
-    bool canBuildHotel() const;           // Check if a hotel can be built
+    bool canBuildHouse() const;           
+    bool canBuildHotel() const;           
 
-    // Override Square's action method to take Player and Board as parameters
-    void action(Player* player, Board* board, sf::RenderWindow& window) override;
+    // הפונקציה Action להפעיל את הפעולה כשהשחקן מגיע לנכס
+    void action(Player* player, Board* board) override;
+    void render(sf::RenderWindow& window, sf::Vector2f position, float size, const sf::Font& font) override;
 
     // Destructor
     ~PropertySquare();
 };
 
-#endif // PROPERTYSQUARE_H
+#endif // PROPERTYSQUARE_HPP
