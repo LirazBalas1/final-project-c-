@@ -4,235 +4,255 @@
 #include "Player.hpp"
 #include "Board.hpp"
 #include "Square.hpp"
-#include "PropertySquare.hpp"
 #include "RailroadSquare.hpp"
 #include "UtilitySquare.hpp"
 #include <iostream>
-#include <cstdlib>
-#include <ctime>
-#include <algorithm>
 
-Player::Player(const std::string& playerName, int initialBalance, sf::Color playerColor)
-    : name(playerName), balance(initialBalance), position(0), inJail(false), jailTurns(0), color(playerColor) {
+Player::Player(const std::string& playerName, int initialBalance, sf::Color playerColor, bool isAIPlayer)
+    : name(playerName), balance(initialBalance), position(0), inJail(false), jailTurns(0), color(playerColor), isAI(isAIPlayer) {
     token.setRadius(10);
     token.setFillColor(color);
 }
+
 
 std::string Player::getName() const { return name; }
 int Player::getBalance() const { return balance; }
 int Player::getPosition() const { return position; }
 bool Player::isInJail() const { return inJail; }
-sf::Color Player::getColor() const { return color; }
 
-void Player::setBalance(int newBalance) { balance = newBalance; }
-void Player::setPosition(int newPosition) { position = newPosition; }
-
-std::vector<PropertySquare*> Player::getPropertySquares() const {
-    std::vector<PropertySquare*> propertySquares;
-    for (auto* property : properties) {
-        if (auto* propertySquare = dynamic_cast<PropertySquare*>(property)) {
-            propertySquares.push_back(propertySquare);
-        }
+bool Player::tryToEscapeJail() {
+    int roll = rollDice();
+    if (roll % 2 == 0) {  // שחקן יוצא אם הוא זרק זוגי
+        getOutOfJail();
+        std::cout << name << " rolled an even number and got out of jail!" << std::endl;
+        return true;
+    } else {
+        std::cout << name << " did not manage to escape jail." << std::endl;
+        return false;
     }
-    return propertySquares;
 }
-
-void Player::move(int steps, Board& board, sf::RenderWindow& window) {
-    int newPosition = (position + steps) % 40;
-    if (newPosition < position) {
-        addMoney(200, window);
-    }
-    position = newPosition;
-    
-    Square* landedSquare = board.getSquareAtPosition(position);
-    landedSquare->action(this, &board, window);
+bool Player::isAIPlayer() const {
+    return isAI;
 }
-
-void Player::displayMessage(sf::RenderWindow& window, const std::string& message) {
-    sf::Font font;
-    if (!font.loadFromFile("Roboto-Black.ttf")) {
-        std::cerr << "Error loading font!" << std::endl;
+void Player::takeAITurn(Board& board) {
+    if (isInJail()) {
+        tryToEscapeJail();
         return;
     }
 
-    sf::Text messageText(message, font, 20);
-    messageText.setPosition(200, 250);
+    int roll = rollDice();
+    move(roll, board);
 
-    sf::Clock clock;
-    while (clock.getElapsedTime().asSeconds() < 2) {
-        window.clear(sf::Color::White);
-        window.draw(messageText);
-        window.display();
-    }
-}
-
-void Player::buyProperty(Square* property, sf::RenderWindow& window) {
-    PropertySquare* propertySquare = dynamic_cast<PropertySquare*>(property);
-    if (propertySquare) {
-        int cost = propertySquare->getCost();
-        if (balance >= cost) {
-            balance -= cost;
-            properties.push_back(propertySquare);
-            propertySquare->setOwner(this);
-            displayMessage(window, getName() + " bought " + propertySquare->getName() + " for $" + std::to_string(cost));
-        } else {
-            displayMessage(window, "Not enough money to buy " + propertySquare->getName());
+    Square* landedSquare = board.getSquareAtPosition(position);
+    if (PropertySquare* property = dynamic_cast<PropertySquare*>(landedSquare)) {
+        if (property->getOwner() == nullptr && balance >= property->getCost()) {
+            buyProperty(property);
         }
+    }
+
+    std::cout << name << "'s AI turn is complete." << std::endl;
+}
+
+
+
+sf::Color Player::getColor() const { return color; }
+void Player::setBalance(int newBalance) { balance = newBalance; }
+void Player::setPosition(int newPosition) { position = newPosition; }
+
+void Player::forfeit() {
+    std::cout << name << " has forfeited the game. Returning all properties to the bank." << std::endl;
+    properties.clear();  // ה-Smart Pointers דואגים לשחרר את הזיכרון אוטומטית
+}
+
+void Player::addProperty(std::unique_ptr<Square> property) {
+    properties.push_back(std::move(property));  // הוספת נכס לשחקן
+}
+
+std::vector<PropertySquare*> Player::getPropertySquares() const {
+    std::vector<PropertySquare*> propertySquares;
+
+    for (const auto& square : properties) {
+        if (PropertySquare* propertySquare = dynamic_cast<PropertySquare*>(square.get())) {
+            propertySquares.push_back(propertySquare);
+        }
+    }
+
+    return propertySquares;
+}
+
+int Player::getNumberOfRailroads() const {
+    int count = 0;
+    for (const auto& property : properties) {
+        if (dynamic_cast<RailroadSquare*>(property.get()) != nullptr) {
+            count++;
+        }
+    }
+    return count;
+}
+
+void Player::removeProperty(Square* property) {
+    auto it = std::remove_if(properties.begin(), properties.end(),
+        [&](const std::unique_ptr<Square>& p) { return p.get() == property; });
+    if (it != properties.end()) {
+        properties.erase(it, properties.end());  // מסיר את הנכס מהווקטור של הנכסים
+        std::cout << name << " no longer owns " << property->getName() << "." << std::endl;
     } else {
-        displayMessage(window, "This square cannot be bought.");
+        std::cout << "Property not found in " << name << "'s possession." << std::endl;
     }
 }
 
-void Player::payRent(int amount, Player* owner, sf::RenderWindow& window) {
+int Player::getNumberOfUtilities() const {
+    int count = 0;
+    for (const auto& property : properties) {
+        if (dynamic_cast<UtilitySquare*>(property.get()) != nullptr) {
+            count++;
+        }
+    }
+    return count;
+}
+
+void Player::move(int roll, Board& board) {
+    int oldPosition = position;
+    position = (position + roll) % 40;
+
+    std::cout << name << " moves from " << oldPosition << " to " << position << "." << std::endl;
+
+    Square* landedSquare = board.getSquareAtPosition(position);
+    if (landedSquare) {
+        std::cout << name << " landed on " << landedSquare->getName() << "." << std::endl;
+        landedSquare->action(this, &board);
+    } else {
+        std::cerr << "Error: Landed on a null square." << std::endl;
+    }
+}
+
+void Player::incrementJailTurn() {
+    jailTurns++;
+    if (jailTurns >= 3) {
+        getOutOfJail();  // אם עברו 3 תורות, השחקן משתחרר אוטומטית
+        std::cout << name << " has been in jail for 3 turns and is now released." << std::endl;
+    }
+}
+
+int Player::getJailTurns() const {
+    return jailTurns;
+}
+
+void Player::buyProperty(Square* property) {
+    PropertySquare* propertySquare = dynamic_cast<PropertySquare*>(property);
+
+    if (!propertySquare) {
+        std::cout << "This square cannot be bought." << std::endl;
+        return;
+    }
+
+    if (propertySquare->getOwner() != nullptr) {
+        std::cout << propertySquare->getName() << " is already owned by " << propertySquare->getOwner()->getName() << "." << std::endl;
+        return;
+    }
+
+    int cost = propertySquare->getCost();
+    if (balance < cost) {
+        std::cout << "Not enough money to buy " << propertySquare->getName() << ". Needed: $" << cost << ", Available: $" << balance << "." << std::endl;
+        return;
+    }
+
+    balance -= cost;
+    propertySquare->setOwner(this);
+    properties.push_back(std::unique_ptr<Square>(propertySquare));
+
+    std::cout << name << " bought " << propertySquare->getName() << " for $" << cost << "." << std::endl;
+}
+
+void Player::offerLoan(Player* otherPlayer, int amount, int interestRate) {
     if (balance >= amount) {
         balance -= amount;
+        otherPlayer->addMoney(amount);
+        std::cout << name << " loaned $" << amount << " to " << otherPlayer->getName() 
+                  << " with an interest rate of " << interestRate << "%" << std::endl;
+    } else {
+        std::cout << name << " doesn't have enough money to offer a loan." << std::endl;
+    }
+}
+
+void Player::repayLoan(int amount, Player* lender) {
+    if (balance >= amount) {
+        balance -= amount;
+        lender->addMoney(amount);
+        std::cout << name << " repaid $" << amount << " to " << lender->getName() << std::endl;
+    } else {
+        std::cout << name << " doesn't have enough money to repay the loan." << std::endl;
+    }
+}
+
+void Player::payRent(int amount, Player* owner) {
+    if (balance > amount) {
+        balance -= amount;
         if (owner) {
-            owner->addMoney(amount, window);
+            owner->addMoney(amount);
         }
-        displayMessage(window, getName() + " paid $" + std::to_string(amount) + " in rent.");
     } else {
-        // Handle bankruptcy
-        int availableFunds = balance + getTotalMortgageValue();
-
-        if (availableFunds >= amount) {
-            // Player can avoid bankruptcy by mortgaging properties
-            while (balance < amount) {
-                Square* propertyToMortgage = selectPropertyToMortgage(window);
-                if (propertyToMortgage) {
-                    mortgage(propertyToMortgage, window);
-                } else {
-                    break; // Player chose not to mortgage more properties
-                }
-            }
-            
-            // Try to pay rent again
-            if (balance >= amount) {
-                balance -= amount;
-                if (owner) {
-                    owner->addMoney(amount, window);
-                }
-                displayMessage(window, getName() + " paid $" + std::to_string(amount) + " in rent after mortgaging properties.");
-            } else {
-                declareBankruptcy(owner, window);
-            }
-        } else {
-            // Player doesn't have enough even after mortgaging everything
-            declareBankruptcy(owner, window);
-        }
+        std::cout << name << " cannot afford to pay $" << amount << " in rent." << std::endl;
     }
 }
 
-Square* Player::selectPropertyToMortgage(sf::RenderWindow& window) {
-    std::vector<Square*> mortgageableProperties;
-    for (auto property : properties) {
-        if (!property->isMortgaged()) {
-            mortgageableProperties.push_back(property);
-        }
-    }
-
-    if (mortgageableProperties.empty()) {
-        return nullptr;
-    }
-
-    // TODO: Implement SFML-based property selection GUI
-    // For now, we'll just return the first mortgageable property
-    return mortgageableProperties[0];
-}
-
-void Player::mortgage(Square* property, sf::RenderWindow& window) {
-    if (property && !property->isMortgaged()) {
-        balance += property->getMortgageValue();
-        property->setMortgaged(true);
-        displayMessage(window, getName() + " mortgaged " + property->getName() + " for $" + std::to_string(property->getMortgageValue()));
-    }
-}
-
-void Player::declareBankruptcy(Player* creditor, sf::RenderWindow& window) {
-    displayMessage(window, getName() + " has gone bankrupt!");
-
-    if (creditor) {
-        // Transfer all assets to the creditor
-        for (auto property : properties) {
-            property->setOwner(creditor);
-            creditor->addProperty(property);
-        }
-        creditor->addMoney(balance, window);
-        displayMessage(window, creditor->getName() + " received all assets from " + getName());
-    } else {
-        // Bankrupt to the bank, return all properties to the bank
-        for (auto property : properties) {
-            property->setOwner(nullptr);
-            property->setMortgaged(false);
-        }
-        displayMessage(window, "All properties of " + getName() + " returned to the bank");
-    }
-
-    // Clear player's properties and set balance to 0
-    properties.clear();
-    balance = 0;
-    
-    // Update player status
-    inJail = false;
-    jailTurns = 0;
-
-    displayMessage(window, getName() + " has been removed from the game");
-}
-
-void Player::addMoney(int amount, sf::RenderWindow& window) {
+void Player::addMoney(int amount) {
     balance += amount;
-    displayMessage(window, getName() + " received $" + std::to_string(amount));
+    std::cout << name << " received $" << amount << std::endl;
 }
 
-void Player::sendToJail(sf::RenderWindow& window) {
+void Player::sendToJail() {
     inJail = true;
+    jailTurns = 0;  // מאפסים את מספר התורות בכלא
     position = 10;  // Jail position
-    jailTurns = 0;
-    displayMessage(window, getName() + " was sent to jail!");
+    std::cout << name << " was sent to jail." << std::endl;
 }
 
 void Player::getOutOfJail() {
     inJail = false;
-    jailTurns = 0;
+    jailTurns = 0;  // מאפסים את מספר התורות בכלא לאחר יציאה
+    std::cout << name << " is out of jail." << std::endl;
 }
 
 int Player::rollDice() {
-    return (rand() % 6) + 1 + (rand() % 6) + 1;
+    return (rand() % 6 + 1) + (rand() % 6 + 1);
 }
 
 bool Player::isBankrupt() const {
-    return balance <= 0 && properties.empty();
+    return balance < 0;
 }
 
 int Player::getTotalMortgageValue() const {
     int totalValue = 0;
-    for (auto property : properties) {
-        totalValue += property->getMortgageValue();
+    for (const auto& square : properties) {
+        PropertySquare* propertySquare = dynamic_cast<PropertySquare*>(square.get());
+        if (propertySquare != nullptr && propertySquare->isMortgaged()) {
+            totalValue += propertySquare->getMortgageValue();
+        }
     }
     return totalValue;
 }
 
-int Player::getNumberOfRailroads() const {
-    return std::count_if(properties.begin(), properties.end(), 
-                         [](const Square* p) { return dynamic_cast<const RailroadSquare*>(p) != nullptr; });
-}
-
-int Player::getNumberOfUtilities() const {
-    return std::count_if(properties.begin(), properties.end(), 
-                         [](const Square* p) { return dynamic_cast<const UtilitySquare*>(p) != nullptr; });
+void Player::displayMessage(const std::string& message) {
+    std::cout << message << std::endl;
 }
 
 void Player::render(sf::RenderWindow& window, const sf::Font& font) const {
-    // Render player token on the board
     window.draw(token);
 
-    // Render player info
     sf::Text playerInfo;
     playerInfo.setFont(font);
-    playerInfo.setCharacterSize(12);
-    playerInfo.setFillColor(color);
+    playerInfo.setCharacterSize(14);
+    playerInfo.setFillColor(sf::Color::Black);
     playerInfo.setString(name + ": $" + std::to_string(balance));
-    playerInfo.setPosition(10, 10 + 20 * position);  // Adjust position as needed
+
+    sf::FloatRect textBounds = playerInfo.getLocalBounds();
+    playerInfo.setOrigin(textBounds.width / 2, textBounds.height / 2);
+    playerInfo.setPosition(window.getSize().x / 2, window.getSize().y / 2 - 100);
+
     window.draw(playerInfo);
 }
 
-Player::~Player() {}
+Player::~Player() {
+    // ה-Smart Pointers דואגים לשחרור הזיכרון אוטומטית
+}
