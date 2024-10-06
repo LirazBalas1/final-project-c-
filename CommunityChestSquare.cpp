@@ -8,16 +8,21 @@
 
 CommunityChestSquare::CommunityChestSquare() : Square("Community Chest") {}
 
-void CommunityChestSquare::action(Player* player, Board* board, sf::RenderWindow& window) {
+void CommunityChestSquare::action(Player* player, Board* board) {
     std::cout << player->getName() << " landed on Community Chest!" << std::endl;
-    Card* card = board->drawCommunityChestCard();
+    Card* card = board->drawCommunityChestCard(); // Get a community chest card from the board
+
     if (card) {
-        card->applyToPlayer(player, board, window);
+        std::cout << "Drew a Community Chest card: " << card->getDescription() << std::endl;
+        card->applyToPlayer(player, board); // Apply the card's effect to the player
+        player->displayMessage("Drew a Community Chest card: " + card->getDescription());
     } else {
-        std::cout << "No Community Chest cards left!" << std::endl;
+        player->displayMessage("No Community Chest cards left!");
     }
 }
-
+sf::Color CommunityChestSquare::getColor() const  {
+        return sf::Color::Magenta;  // ורוד
+    }
 void CommunityChestSquare::render(sf::RenderWindow& window, sf::Vector2f position, float size, const sf::Font& font) {
     sf::RectangleShape square(sf::Vector2f(size, size));
     square.setPosition(position);
