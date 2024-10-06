@@ -1,8 +1,8 @@
 //Liraz Balas
 //211801220
 //lbalad13@gmail.com
-#ifndef DICE_H
-#define DICE_H
+#ifndef DICE_HPP
+#define DICE_HPP
 
 #include <SFML/Graphics.hpp>
 
@@ -11,14 +11,13 @@ private:
     int die1;  // First die result
     int die2;  // Second die result
     int doublesCount;  // Number of consecutive doubles rolled
-    int total ;
 
     // Graphical components for rendering dice
-    sf::RectangleShape die1Shape;  // Name should be consistent
-    sf::RectangleShape die2Shape;  // Name should be consistent
-    sf::Text die1Text;  // Name should be consistent
-    sf::Text die2Text;  // Name should be consistent
-    sf::Font font;  // Make sure this matches with the implementation
+    sf::RectangleShape die1Shape;
+    sf::RectangleShape die2Shape;
+    sf::Text die1Text;
+    sf::Text die2Text;
+    sf::Font font;
 
 public:
     Dice();
@@ -32,7 +31,6 @@ public:
     int getTotal() const;
     bool isDouble() const;
     int getDoublesCount() const;
-    void setTotal(int newTotal);
 
     // Reset doubles count
     void resetDoublesCount();
@@ -41,4 +39,4 @@ public:
     void render(sf::RenderWindow& window);
 };
 
-#endif // DICE_H
+#endif // DICE_HPP
