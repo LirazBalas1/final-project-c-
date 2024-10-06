@@ -8,15 +8,20 @@
 
 ChanceSquare::ChanceSquare() : Square("Chance") {}
 
-void ChanceSquare::action(Player* player, Board* board, sf::RenderWindow& window) {
+void ChanceSquare::action(Player* player, Board* board) {
     std::cout << player->getName() << " landed on Chance!" << std::endl;
-    Card* card = board->drawChanceCard();
+    Card* card = board->drawChanceCard(); // Get a chance card from the board
+
     if (card) {
-        card->applyToPlayer(player, board, window);
+        card->applyToPlayer(player, board); // Apply the card's effect to the player
+        player->displayMessage("Drew a Chance card: " + card->getDescription());
     } else {
-        std::cout << "No Chance cards left!" << std::endl;
+        player->displayMessage("No Chance cards left!");
     }
 }
+sf::Color ChanceSquare::getColor() const {
+        return sf::Color::Blue;  // כחול
+    }
 
 void ChanceSquare::render(sf::RenderWindow& window, sf::Vector2f position, float size, const sf::Font& font) {
     sf::RectangleShape square(sf::Vector2f(size, size));
